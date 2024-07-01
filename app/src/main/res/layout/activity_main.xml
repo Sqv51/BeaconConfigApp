@@ -4,49 +4,49 @@
     android:orientation="vertical">
 
     <EditText
-        android:id="@+id/mac_address_input"
+        android:id="@+id/macAddressInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Enter MAC Address"/>
     <Button
-        android:id="@+id/button1"
+        android:id="@+id/addMacButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Send Add Request"/>
 
     <Spinner
-        android:id="@+id/mac_address_spinner"
+        android:id="@+id/macAddressSpinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
 
     <Button
-        android:id="@+id/button2"
+        android:id="@+id/getMacButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Update Mac Adrsesses"/>
 
     <Button
-        android:id="@+id/button3"
+        android:id="@+id/removeMacButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Delete Selected Mac Address "/>
 
     <EditText
-        android:id="@+id/integer_input"
+        android:id="@+id/integerInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="number"
         android:hint="Enter rssi treshold(negative)"/>
     <Button
-        android:id="@+id/button4"
+        android:id="@+id/updateRssiButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Update RSSI"/>
 
 
     <TextView
-        android:id="@+id/http_response_text"
+        android:id="@+id/httpResponseText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="16sp"
