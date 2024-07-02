@@ -66,48 +66,20 @@ public class MainActivity extends AppCompatActivity {
 
         addMacButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onClick(View v) { //sends a add mac request to the server when the button is clicked and checks if the mac address is valid before sending
                 if (macAddressInput.getText().toString().length() != 17) {
                     httpResponseText.setText("Invalid MAC Address");
                     return;
                 }
                 String macAddress = macAddressInput.getText().toString();
-                try {
-                    sendRequest(addMac(macAddress));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                sendRequest(addMac(macAddress));
             }
         });
 
         getMacButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try {
-                    tempString = sendRequest(getMac());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                //get the data between the square brackets
-                Pattern p = Pattern.compile("\\[(.*?)\\]");
-                Matcher m = p.matcher(tempString);
-                while(m.find()) {
-                    tempString = m.group(1);
-                }
-                //split the string into an array
-                String[] macAddresses = tempString.split(",");
-                //remove the quotes from the strings
-                for (int i = 0; i < macAddresses.length; i++) {
-                    macAddresses[i] = macAddresses[i].replace("\"", "");
-                }
-                //sort the array
-                Arrays.sort(macAddresses);
-                //create an adapter for the spinner
-                ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, macAddresses);
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                macAddressSpinner.setAdapter(adapter);
-
-
+                sendRequest(getMac());
             }
         });
 
@@ -118,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
 
                 try {
                     sendRequest(removeMac(macAddress));
-                } catch (IOException | JSONException e) {
+                } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -132,11 +104,7 @@ public class MainActivity extends AppCompatActivity {
                     integerInput.setText("70");
                 }
                 int rssi = Integer.parseInt(integerInput.getText().toString());
-                try {
-                    sendRequest(updateRssi(rssi));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                sendRequest(updateRssi(rssi));
             }
         });
     }
@@ -174,32 +142,36 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Request addMac(String macAddress) {
-    JSONObject json = new JSONObject();
-    JSONArray macAddresses = new JSONArray();
-    try {
-        macAddresses.put(macAddress);
-        json.put("macAddresses", macAddresses);
-    } catch (JSONException e) {
-        e.printStackTrace();
+        JSONObject json = new JSONObject();
+        JSONArray macAddresses = new JSONArray();
+        try {
+            macAddresses.put(macAddress);
+            json.put("macAddresses", macAddresses);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        // Use MediaType constant for JSON
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+
+        // Create the request body
+        RequestBody body = RequestBody.create(json.toString(), JSON);
+
+        // Build the request
+        return new Request.Builder()
+                .url("http://10.34.82.169/addMac")
+                .post(body)
+                .build();
     }
-    RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
-    return new Request.Builder()
-            .url("http://10.34.82.169/addMac")
-            .post(body)
-            .build();
-}
 
 
 
 
-    private String sendRequest(Request request) throws IOException {
-
-
+    private void sendRequest(Request request) {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
-
             }
 
             @Override
@@ -209,16 +181,33 @@ public class MainActivity extends AppCompatActivity {
                         throw new IOException("Unexpected code " + response);
                     }
                     final String responseData = responseBody.string();
-                    //set tempString to the response data
-                    tempString = responseData;
-
+                    //get the data between the square brackets
+                    Pattern p = Pattern.compile("\\[(.*?)\\]");
+                    Matcher m = p.matcher(responseData);
+                    String tempString = "";
+                    while(m.find()) {
+                        tempString = m.group(1);
+                    }
+                    //split the string into an array
+                    String[] macAddresses = tempString.split(",");
+                    //remove the quotes from the strings
+                    for (int i = 0; i < macAddresses.length; i++) {
+                        macAddresses[i] = macAddresses[i].replace("\"", "");
+                    }
+                    //sort the array
+                    Arrays.sort(macAddresses);
+                    //update the spinner on the UI thread
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, macAddresses);
+                            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                            macAddressSpinner.setAdapter(adapter);
+                        }
+                    });
                 }
             }
         });
-
-        return tempString;
-
-
     }
 
 }
