@@ -121,13 +121,12 @@ class MainActivity : AppCompatActivity() {
         val url = "http://10.34.82.169:80/updateRssi"
         val json = JSONObject()
         json.put("rssi", rssi)
+        println("JSON: $json") // This will print the JSON object
         val requestBody = json.toString().toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url(url)
             .post(requestBody)
             .build()
         return request
-
-
     }
 }

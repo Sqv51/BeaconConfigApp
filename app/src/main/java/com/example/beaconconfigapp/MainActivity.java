@@ -11,12 +11,12 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
     private String tempString = "temp";
     private OkHttpClient client = new OkHttpClient();
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,20 +59,7 @@ public class MainActivity extends AppCompatActivity {
         updateRssiButton = findViewById(R.id.updateRssiButton);
         httpResponseText = findViewById(R.id.httpResponseText);
 
-        // Assuming macAddressInput is your EditText or similar input field
-        macAddressInput.setFilters(new InputFilter[]{
-                new InputFilter() {
-                    public CharSequence filter(CharSequence source, int start, int end, android.text.Spanned dest, int dstart, int dend) {
-                        StringBuilder builder = new StringBuilder(dest.toString());
-                        builder.replace(dstart, dend, source.subSequence(start, end).toString());
-                        if (!builder.toString().matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})?$")) {
-                            return "";
-                        }
-                        return null;
-                    }
-                }
 
-        });
 
 
 
@@ -126,9 +115,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String macAddress = macAddressSpinner.getSelectedItem().toString();
+
                 try {
                     sendRequest(removeMac(macAddress));
-                } catch (IOException e) {
+                } catch (IOException | JSONException e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -137,6 +127,10 @@ public class MainActivity extends AppCompatActivity {
         updateRssiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if(integerInput.getText().toString().isEmpty()) {
+                    //set rss to 70 if no input is given
+                    integerInput.setText("70");
+                }
                 int rssi = Integer.parseInt(integerInput.getText().toString());
                 try {
                     sendRequest(updateRssi(rssi));
@@ -147,35 +141,28 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private Request updateRssi(int rssi) {
-        JSONObject json = new JSONObject();
-        try {
-            json.put("rssi", -rssi);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json"));
+    public static Request updateRssi(int rssi) {
+        //directly build reqest as a string
+        String json = "{\"rssiThreshold\":" + -rssi + "}";
+        RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
         return new Request.Builder()
                 .url("http://10.34.82.169/updateRssi")
                 .post(body)
                 .build();
-
-
     }
 
-    private Request removeMac(String macAddress) {
+    private Request removeMac(String macAddress) throws JSONException {
+        JSONArray macAddresses = new JSONArray();
+        macAddresses.put(macAddress);
         JSONObject json = new JSONObject();
-        try {
-            json.put("macAddress", macAddress);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json"));
-        return new Request.Builder()
+        json.put("macAddresses", macAddresses);
+        RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
+        Request request = new Request.Builder()
                 .url("http://10.34.82.169/removeMac")
                 .post(body)
                 .build();
-
+        System.out.println(request);
+        return request;
     }
 
     private Request getMac() {
@@ -187,30 +174,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Request addMac(String macAddress) {
-        JSONObject json = new JSONObject();
-        try {
-            json.put("macAddress", macAddress);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json"));
-        return new Request.Builder()
-                .url("http://10.34.82.169/addMac")
-                .post(body)
-                .build();
-
-
+    JSONObject json = new JSONObject();
+    JSONArray macAddresses = new JSONArray();
+    try {
+        macAddresses.put(macAddress);
+        json.put("macAddresses", macAddresses);
+    } catch (JSONException e) {
+        e.printStackTrace();
     }
+    RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
+    return new Request.Builder()
+            .url("http://10.34.82.169/addMac")
+            .post(body)
+            .build();
+}
+
+
+
 
     private String sendRequest(Request request) throws IOException {
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<String> responseDataRef = new AtomicReference<>();
+
 
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 e.printStackTrace();
-                latch.countDown();
+
             }
 
             @Override
@@ -220,20 +209,16 @@ public class MainActivity extends AppCompatActivity {
                         throw new IOException("Unexpected code " + response);
                     }
                     final String responseData = responseBody.string();
-                    httpResponseText.setText(responseData);
-                    responseDataRef.set(responseData);
-                    latch.countDown();
+                    //set tempString to the response data
+                    tempString = responseData;
+
                 }
             }
         });
 
-        try {
-            latch.await(); // Wait until response is received or onFailure is called
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        return tempString;
 
-        return responseDataRef.get();
+
     }
 
 }
